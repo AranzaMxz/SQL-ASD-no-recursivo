@@ -33,32 +33,42 @@ public class Scanner {
 
             switch (estado){
                 case 0:
-                    if(caracter == '*'){
+                    if(caracter == '*'){ //Q1 final state
                         tokens.add(new Token(TipoToken.ASTERISCO, "*", i + 1));
                     }
-                    else if(caracter == ','){
+                    else if(caracter == ','){ //Q2 final state
                         tokens.add(new Token(TipoToken.COMA, ",", i + 1));
                     }
-                    else if(caracter == '.'){
+                    else if(caracter == '.'){ //Q3 final state
                         tokens.add(new Token(TipoToken.PUNTO, ".", i + 1));
                     }
-                    else if(Character.isAlphabetic(caracter)){
+                    else if(Character.isAlphabetic(caracter)){ // Q4
                         estado = 1;
                         lexema = lexema + caracter;
                         inicioLexema = i;
                     }
+                    else if (caracter == ' ')
+                        break;
+                    else
+                    {
+                        System.out.println("Error en la posición " + (i+1) + ","+" '"+ caracter + "' no es aceptado");
+                        String error = String.valueOf(caracter);
+                        tokens.add(new Token(TipoToken.ERROR, error, i + 1));
+                        break;
+                    }
+
                     break;
 
                 case 1:
-                    if(Character.isAlphabetic(caracter) || Character.isDigit(caracter) ){
+                    if(Character.isAlphabetic(caracter) || Character.isDigit(caracter) ){ //Q4 continuación
                         lexema = lexema + caracter;
                     }
                     else{
                         TipoToken tt = palabrasReservadas.get(lexema);
-                        if(tt == null){
+                        if(tt == null){ // Q6 id
                             tokens.add(new Token(TipoToken.IDENTIFICADOR, lexema, inicioLexema + 1));
                         }
-                        else{
+                        else{ // Q5 palabra reservada
                             tokens.add(new Token(tt, lexema, inicioLexema + 1));
                         }
 

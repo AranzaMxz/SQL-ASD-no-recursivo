@@ -27,15 +27,12 @@ public class Principal {
     }
 
     private static void ejecutar(String source){
-        Scanner scanner = new Scanner(source);
-        List<Token> tokens = scanner.scanTokens();
+        Scanner scanner = new Scanner(source); // analizador léxico
+        List<Token> tokens = scanner.scanTokens(); // se guardan los tokens
 
-        /*for(Token token : tokens){
-            System.out.println(token);
-        }*/
-
-        Parser parser = new Parser(tokens);
+        Parser parser = new Parser(tokens); // analizador sintáctico
         parser.parse();
+
     }
 
     /*

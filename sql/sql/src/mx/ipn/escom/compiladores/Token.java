@@ -18,7 +18,9 @@ public class Token {
         this.lexema = lexema;
         this.posicion = 0;
     }
-
+    public String getTipo() {
+        return String.valueOf(tipo);
+    }
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Token)) {
@@ -31,6 +33,7 @@ public class Token {
 
         return false;
     }
+
 
     public String toString(){
         return tipo + " " + lexema + " ";

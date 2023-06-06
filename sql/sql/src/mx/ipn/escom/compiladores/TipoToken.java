@@ -9,6 +9,8 @@ public enum TipoToken {
     // Caracteres
     COMA, PUNTO, ASTERISCO,
 
+    // ERROR
+    ERROR,
     // Final de cadena
     EOF
 }
