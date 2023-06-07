@@ -1,8 +1,6 @@
 package mx.ipn.escom.compiladores;
 
-import javax.management.StringValueExp;
 import java.util.List;
-import java.util.SimpleTimeZone;
 import java.util.Stack;
 
 public class Parser {
@@ -21,7 +19,6 @@ public class Parser {
 
     private int i = 0; // para entrada
     private int tope = 0; // para pila
-    private boolean hayErrores = false; // no hay errores
 
     private Token aux; // Contiene tipo_token y lexema
 
@@ -29,370 +26,400 @@ public class Parser {
         this.tokens = tokens;
     }
 
-    Stack <String> pila = new Stack<>();
+    Stack <Integer> pila = new Stack<>();
+
+    private static final String[][] ACTION =
+            {
+                    // X es error
+                    //       |  0    |   1   |    2     |  3  |   4  |  5   |   6  |   7  | 8 |  9 |  10 | 11  | 12  |  13 |  14 | 15  |  16 |  17 |  18
+                    //        select |  from | distinct |  *  |   ,  |  id  |  .   |  $   | X |  D |  P  |  A  |  A1 |  A2 |  A3 |  T  |  T1 |  T2 |  T3
+                    /* 0 */  { "s1"  ,  ""   ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 1 */  {  ""   ,  ""   ,   "s3"   , "s5",  ""  , "s8" ,  ""  ,  ""  , "", "2", "4" , "6" ,  "" , "7" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 2 */  {  ""   , "s9"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 3 */  {  ""   ,  ""   ,    ""    , "s5",  ""  , "s8" ,  ""  ,  ""  , "", "" , "10", "6" ,  "" , "7" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 4 */  {  ""   , "r2"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 5 */  {  ""   , "r3"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 6 */  {  ""   , "r4"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 7 */  {  ""   , "r7"  ,    ""    ,  "" , "s12",  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" , "11",  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 8 */  {  ""   , "r10" ,    ""    ,  "" , "r10",  ""  , "s14",  ""  , "", "" ,  "" ,  "" ,  "" ,  "" , "13",  "" ,  "" ,  "" ,  "" },
+                    /* 9 */  {  ""   ,  ""   ,    ""    ,  "" ,  ""  , "s17",  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" , "15",  "" , "16",  "" },
+                    /* 10 */ {  ""   , "r1"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 11 */ {  ""   , "r5"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 12 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  , "s8" ,  ""  ,  ""  , "", "" ,  "" , "18",  "" , "7" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 13 */ {  ""   , "r8"  ,    ""    ,  "" , "r8" ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 14 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  , "s19",  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 15 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  ,  ""  ,  ""  , "acc", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 16 */ {  ""   ,  ""   ,    ""    ,  "" , "s21",  ""  ,  ""  , "r13", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" , "20",  "" ,  "" },
+                    /* 17 */ {  ""   ,  ""   ,    ""    ,  "" , "r16", "s23",  ""  , "r16", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" , "22"},
+                    /* 18 */ {  ""   , "r6"  ,    ""    ,  "" ,  ""  ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 19 */ {  ""   , "r9"  ,    ""    ,  "" , "r9" ,  ""  ,  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 20 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  ,  ""  ,  ""  , "r11", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 21 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  , "s17",  ""  ,  ""  , "", "" ,  "" ,  "" ,  "" ,  "" ,  "" , "24",  "" , "16",  "" },
+                    /* 22 */ {  ""   ,  ""   ,    ""    ,  "" , "r14",  ""  ,  ""  , "r14", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 23 */ {  ""   ,  ""   ,    ""    ,  "" , "r15",  ""  ,  ""  , "r15", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" },
+                    /* 24 */ {  ""   ,  ""   ,    ""    ,  "" ,  ""  ,  ""  ,  ""  , "r12", "", "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" ,  "" }
+            };
     public void parse() {
         i = 0; // contador que recorre la lista de tokens
-        tope = 0; // apuntador que apunta al tope de la pila
-        aux = tokens.get(i); // aux es el el que contenga al token en la posición i
-        pila.push("$");
-        pila.push("Q"); // Agregamos Q a la pila
+        pila.push(0); // La pila inicia en el estado 0
+        aux = tokens.get(i); // Token en la posición i
 
         if (aux.equals(finCadena)) // si se ha recorrido toda la entrada
             System.out.println("Ninguna entrada ingresada. Intente de nuevo");
-        else
-        {
-            Q(); // Llamamos a la función
+        else {
+            while (true) {
+                int estadoActual = pila.peek(); // El estado actual
+                aux = tokens.get(i); // Token en la posición i
+                int index_lexema = indexLexema(aux.tipo);
 
-            if(i <= tokens.size()-1) // se recorrio toda la entrada
-            {
-                if (pila.get(tope).equals(finCadena.lexema)) // El tope de la pila y hasta donde se leyó la cadena son $ (la entrada fue aceptada)
+                String action = ACTION[estadoActual][index_lexema]; // Obtenemos la intersección del estado y el símbolo
+
+                if (action.startsWith("s")) // token aceptado -> desplazamiento
+                {
+                    int sigEstado = Integer.parseInt(action.substring(1)); // Quitamos la s del string y el resto lo convertimos en un número
+                    pila.push(sigEstado); // Agregamos a la pila el nuevo estado
+                    i++; // Aumentamos i para leer el siguiente token
+                }
+                else if (action.startsWith("r"))
+                {
+                    int regla = Integer.parseInt(action.substring(1)); // Quitamos la r del string y el resto lo convertimos en un número
+                    reduccion(regla);
+                }
+                else if (action.equals("acc"))
+                {
                     System.out.println("Consulta válida");
+                    return; // Termina el programa
+                }
                 else
+                {
+                    error();
                     System.out.println("Consulta no válida");
+                    return; // Termina el programa
+                }
+
             }
         }
-    }
-    void Q() {
-        if (hayErrores) return;
-
-        if (pila.get(tope + 1).equals("Q")) {
-            pila.pop(); // Se saca a Q de la pila
-            pila.push("T");
-            tope++;
-            pila.push("FROM");
-            tope++;
-            pila.push("D");
-            tope++;
-            pila.push("SELECT");
-            tope++;
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-            if (lex.equals(pila.get(tope))) // se verifica que el primer caracter sea 'select'
-            {
-                pila.pop(); //se saca a 'select' de la pila
-                tope--; // el tope disminuye uno
-                coincidir(select);
-                D(); // Q → select  D
-            }
+        }
+        private int indexLexema(TipoToken tipo)
+        {
+            String t = String.valueOf(tipo); // Convertimos el tipo de token en String para compararlo
+            if (t.equals("SELECT"))
+                return 0;
+            else if (t.equals("FROM"))
+                return 1;
+            else if (t.equals("DISTINCT"))
+                return 2;
+            else if (t.equals("ASTERISCO"))
+                return 3;
+            else if (t.equals("COMA"))
+                return 4;
+            else if (t.equals("IDENTIFICADOR"))
+                return 5;
+            else if (t.equals("PUNTO"))
+                return 6;
+            else if (t.equals("EOF"))
+                return 7;
             else
-            {
-               hayErrores = true;
-               System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un select");
-            }
+                return 8; // ERROR
+        }
+    void reduccion(int regla) {
+        String action;
+        int estadoActual;
+        int sig_Estado;
+        switch (regla)
+        {
+            case 1: // D -> distinct P
+                // Sacamos 2 elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][9];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 2: // D -> P
+                // Sacamos un elemento de la pila
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][9];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 3: // P -> *
+            case 4: // P -> A
+                // Sacamos un elemento de la pila
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][10];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 5: // A -> A2 A1
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][11];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 6: // A1 -> , A
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][12];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 7: // A1 -> Ɛ
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][12];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 8: // A2 -> id A3
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][13];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 9: // A3 -> . id
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][14];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 10: // A3 -> Ɛ
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][14];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 11: // T -> T2 T1
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][15];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 12: // T1 -> , T
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][16];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 13: // T1 -> Ɛ
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][16];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 14: // T2 -> id T3
+                // Sacamos dos elementos de la pila
+                pila.pop();
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][17];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 15: // T3 -> id
+                // Sacamos un elemento de la pila
+                pila.pop();
+
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][18];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            case 16: // T3 -> Ɛ
+                // El nuevo estado actual
+                estadoActual = pila.peek();
+
+                // Obtenemos la intersección del estado y el símbolo
+                action = ACTION[estadoActual][18];
+                // Convertimos a int la intersección
+                sig_Estado = Integer.parseInt(action);
+
+                // Agregamos el nuevo estado a la pila
+                pila.push(sig_Estado);
+                break;
+            default:
+                System.out.println("Error en la reducción");
+                break;
         }
     }
-    void D()
+
+    private void error()
     {
-        if (hayErrores) return;
-
-        if (aux.equals(distinct)) // D → distinct P
+        // Buscamos la posición de FROM para tenerlo como referencia
+        int from_position = 0;
+        for (int j = 0 ; j < tokens.size()-1; j++)
         {
-            pila.pop(); // Sacamos a D de la pila
-            pila.push("P");
-            pila.push("DISTINCT");
-            tope++;
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-            if (lex.equals(pila.get(tope)))
+            if (tokens.get(j).equals(from))
             {
-                coincidir(distinct);
-                pila.pop(); // Se saca distinct de la pila
-                tope--;
-                P();
-                if (hayErrores) return;
+                from_position = j;
+                break;
             }
+
         }
-        else if (aux.equals(asterisco)) // D → P
+
+        if (i == 0) // 'select'
+            System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un select");
+        // el error está antes de FROM
+        else if (i<=from_position)
         {
-            pila.pop(); // Sacamos a D de la pila
-            pila.push("P"); // Metemos a P en la pila
-            P();
-            if (hayErrores) return;
+            // select id.ERROR from | select ...id,ERROR form
+            if (tokens.get(i-1).equals(punto)|| tokens.get(i-1).equals(coma))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un identificador");
+            // select ERROR (distinct) from | select ERROR (*) from | select ERROR (id) from
+            else if (tokens.get(i-1).equals(select))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un distinct, * o identificador");
+            // select ... id ERROR from
+            else if (tokens.get(i-1).equals(identificador))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un from");
+            // select distinct ERROR from
+            else if (tokens.get(i-1).equals(distinct))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un * o un identificador");
+
         }
-        else if (aux.equals(identificador)) // D → P → A → A2 A1, A2 → id A3
+        // Falta from
+        else if (from_position == 0)
         {
-            pila.pop(); // Sacamos a D de la pila
-            pila.push("P"); // Metemos a P en la pila
-            P();
-            if (hayErrores) return;
+            // select distinct * ERROR | select * ERROR | select ...id ERROR
+            if (tokens.get(i-1).equals(asterisco) || tokens.get(i-1).equals(identificador))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un from");
+            // select ERROR
+            else if (tokens.get(i-1).equals(select))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un distinct, * o identificador");
+            // select distinct ERROR
+            else if (tokens.get(i-1).equals(distinct))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un * o un identificador");
+            // select ... id.ERROR
+            else if (tokens.get(i-1).equals(punto) || tokens.get(i-1).equals(coma) )
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un identificador");
+        }
+        // El error está después de FROM
+        else if (i > from_position)
+        {
+            // select ... from ERROR | select ... from id id, ERROR
+            if (tokens.get(i-1).equals(from) || tokens.get(i-1).equals(coma))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un identificador");
+                // select ... from ... id id ERROR
+            else if (tokens.get(i-1).equals(identificador) && tokens.get(i-2).equals(identificador))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba una coma");
+            // select ... from id ERROR
+            else if (tokens.get(i-1).equals(identificador))
+                System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + "Se esperaba un identificador o una coma");
+
         }
         else
-        {
-            hayErrores = true;
-            System.out.println("Error en la posición: " + aux.posicion + "("+ aux.lexema +")" + ". Se esperaba un distinct, * o un identificador ");
-            if (hayErrores) return;
-        }
-
-        // Se verifica que después de D haya un from
-        String lex = "";
-        lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-        if (lex.equals(pila.get(tope)))// Q → select D from T
-        {
-            pila.pop(); // Sacamos from de la pila
-            coincidir(from);
-            tope--;
-            // T → T2 T1 → id T3
-            T();
-        }
-        else
-        {
-            hayErrores = true;
-            System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + ". Se esperaba un from");
-        }
-
+            System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")");
     }
-    void P()
-    {
-        if (hayErrores) return;
-
-        if (aux.equals(asterisco)) // P → *
-        {
-            pila.pop(); // Sacamos a P de la pila
-            pila.push("ASTERISCO");
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-            if (lex.equals(pila.get(tope)))
-            {
-                coincidir(asterisco);
-                pila.pop(); // Se saca el * de la pila
-                tope--;
-            }
-        }
-        else if (aux.equals(identificador)) // P → A
-        {
-            pila.pop(); // Sacamos a P de la pila
-            pila.push("A"); // Metemos A en la pila
-            A();
-        }
-        else
-        {
-            hayErrores = true;
-            System.out.println("Error en la posicion " + aux.posicion + "(" + aux.lexema + ")" + ". Se esperaba un * o un identificador");
-        }
-    }
-    void A()
-    {
-        pila.pop(); // Sacamos a A de la pila
-        // A → A2 A1
-        pila.push("A1");
-        pila.push("A2");
-        tope++;
-
-        A2();
-        if (hayErrores) return; // Si hay errores sintácticos en A2, A1 ya no se ejecuta y deja de leer la cadena
-        A1();
-
-    }
-    void A1()
-    {
-        // A1 → , A | Ɛ
-        if (aux.equals(coma) && tokens.get(i+1).equals(identificador)) // verificamos que si hay una coma, el token siguiente sea de identificador
-        {
-            pila.pop(); // Sacamos a A1 de la pila
-            pila.push("A");
-            pila.push("COMA");
-            tope++;
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo);
-            if (lex.equals(pila.get(tope)))
-            {
-                coincidir(coma);
-                pila.pop(); // Sacamos a la COMA de la pila
-                tope--;
-                A();
-            }
-
-        } else if (aux.equals(from)) {
-            // Para A1 → Ɛ
-            // Si A1 es Ɛ, pero el token que se lee es FROM (S(A1)), se saca a A1 de la pila
-            pila.pop(); // Sacamos a A1 de la pila
-            tope--;
-        }
-    }
-    void A2()
-    {
-        if(hayErrores) return;
-
-        pila.pop(); // Sacamos a A2 de la pila
-        pila.push("A3");
-        pila.push("IDENTIFICADOR");
-        tope++;
-
-        String lex = "";
-        lex = String.valueOf(aux.tipo); // Convertimos en string el tipo de token para compararlo
-        if (lex.equals(pila.get(tope))) // A2 → id A3
-        {
-            coincidir(identificador);
-            pila.pop(); // Sacamos a IDENTIFICADOR de la pila
-            tope--;
-            A3();
-        }
-        else
-        {
-            hayErrores = true;
-            System.out.println("Error en la posición " + aux.posicion + "(" + aux.lexema + ")" + ". Se esperaba un identificador");
-        }
-    }
-    void A3()
-    {
-        if (hayErrores) return;
-        if (aux.equals(punto)) // A3 → . id
-        {
-            pila.pop(); // Sacamos a A3 de la pila
-            pila.push("IDENTIFICADOR");
-            pila.push("PUNTO");
-            tope++;
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo);
-            if (lex.equals(pila.get(tope)))
-            {
-                coincidir(punto);
-                pila.pop(); // Sacamos a IDENTIFICADOR de la pila
-                tope--;
-
-                lex = String.valueOf(aux.tipo);
-                if (lex.equals(pila.get(tope))) // Verificamos que después de un PUNTO haya un IDENTIFICADOR
-                {
-                    coincidir(identificador);
-                    pila.pop(); // Sacamos a IDENTIFICADOR  de la pila
-                    tope--;
-                }
-                else
-                {
-                    hayErrores = true;
-                    System.out.println("Error en la posición: " + aux.posicion + "(" + aux.lexema + ")" + ". Se esperaba un identificador");
-                }
-            }
-        }
-        else if (aux.equals(from) || aux.equals(coma))
-        {
-            // Para A3 → Ɛ
-            // Sabemos A → A2 A1, A2 → id A3
-            // Esto es igual a A → id A3 A1
-            // Si A3 es Ɛ, pero el token que se lee es COMA(por A1), se saca a A3 de la pila para que el tope pueda ser A1
-            // Si A1 y A3 son Ɛ, pero el digito que se lee es FROM, se saca a A3 de la pila y posteriormente a A1(en su función)
-            pila.pop();// Sacamos a A3 de la pila
-            tope--;
-        }
-    }
-    void T()
-    {
-        pila.pop(); // Sacamos a T de la pila
-        // A → A2 A1
-        pila.push("T1");
-        pila.push("T2");
-        tope++;
-        T2();
-        if (hayErrores) return; // Si hay errores sintácticos en T2, T1 ya no se ejecuta y deja de leer la cadena
-        T1();
-        if (hayErrores) return; // Si hay errores sintácticos en T1, se deja de leer la entrada
-
-        if (aux.equals(finCadena)) // si se ha recorrido toda la entrada hasta aquí, es válida
-            tope = 0;
-    }
-    void T1()
-    {
-        if (hayErrores) return;
-
-        if (aux.equals(coma))
-        {
-            pila.pop(); // Sacamos a T1 de la pila
-            pila.push("T");
-            pila.push("COMA");
-            tope++;
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-            if (lex.equals(pila.get(tope)))
-            {
-                coincidir(coma);
-                tope--;
-                pila.pop(); // Sacamos a COMA de la pila
-                T();
-            }
-        }
-        else if (aux.equals(finCadena))
-        {
-            // Para T1 → Ɛ
-            pila.pop(); // Sacamos a T1 de la pila
-            tope--;
-        }
-        else if ((tokens.get(i-1).equals(identificador) && tokens.get(i-2).equals(identificador)) || (tokens.get(i-1).equals(identificador)&&tokens.get(i+1).equals(identificador)))
-        {
-            hayErrores = true;
-            System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + ". Se esperaba una coma");
-        }
-    }
-    void T2()
-    {
-        if(hayErrores) return;
-
-        pila.pop(); // Sacamos a T2 de la pila
-        pila.push("T3");
-        pila.push("IDENTIFICADOR");
-        tope++;
-
-        String lex = "";
-        lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-        if (lex.equals(pila.get(tope)))
-        {
-            coincidir(identificador);
-            tope--;
-            pila.pop(); // Sacamos a IDENTIFICADOR de la pila
-                T3();
-        }
-        else
-        {
-            hayErrores = true;
-            System.out.println("Error en la posición " + aux.posicion + "("+ aux.lexema +")" + ". Se esperaba un identificador");
-        }
-    }
-    void T3()
-    {
-        if (aux.equals(identificador))
-        {
-            pila.pop(); // Sacamos a T3 de la pila
-            pila.push("IDENTIFICADOR");
-
-            String lex = "";
-            lex = String.valueOf(aux.tipo); // Convertimos el tipo de token a string para poder hacer la comparación con el tope de la pila
-
-            if (lex.equals(pila.get(tope)))
-            {
-                coincidir(identificador);
-                tope--;
-                pila.pop(); // Sacamos a IDENTIFICADOR de la pila
-            }
-        } else if (aux.equals(coma)) {
-            // Para A3 → Ɛ
-            pila.pop(); // Sacamos a T3 de la pila
-            tope--;
-        }
-    }
-    void coincidir(Token t)
-    {
-        if(hayErrores) return;
-
-        if(aux.tipo == t.tipo){
-            i++;
-            aux = tokens.get(i);
-        }
-        else{
-            hayErrores = true;
-            System.out.println("Error en la posición " + aux.posicion + "(" + aux.lexema + ")" + ". Se esperaba un  " + t.tipo);
-
-        }
-    }
-
 }
