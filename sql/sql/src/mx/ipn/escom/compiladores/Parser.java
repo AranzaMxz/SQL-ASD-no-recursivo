@@ -80,7 +80,7 @@ public class Parser {
                     pila.push(sigEstado); // Agregamos a la pila el nuevo estado
                     i++; // Aumentamos i para leer el siguiente token
                 }
-                else if (action.startsWith("r"))
+                else if (action.startsWith("r")) // token aceptado -> reducción
                 {
                     int regla = Integer.parseInt(action.substring(1)); // Quitamos la r del string y el resto lo convertimos en un número
                     reduccion(regla);
